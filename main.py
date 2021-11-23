@@ -1,5 +1,8 @@
 import os
+from re import S
+import sys
 import discord
+import mariadb
 import configparser
 from discord import Client, Intents, Embed
 from discord_slash import SlashCommand, SlashContext
@@ -7,7 +10,7 @@ from discord_slash.context import MenuContext
 from discord_slash.model import ContextMenuType
 from discord_slash.utils.manage_commands import create_option
 
-guild_ids_lst = [713068366419722300]
+guild_ids_lst = [713068366419722300,682542511797043207]
 
 config = configparser.ConfigParser()
 
@@ -28,6 +31,22 @@ db_username = config['DATABASE']['db_username']
 db_password = config['DATABASE']['db_password']
 db_ip = config['DATABASE']['db_ip']
 db_port = int(config['DATABASE']['db_port'])
+
+# Connect to MariaDB Platform
+try:
+    db = mariadb.connect(
+        user=db_username,
+        password=db_password,
+        host=db_ip,
+        port=db_port,
+        database="Charlies_AI"
+    )
+except mariadb.Error as e:
+    print(f"Error connecting to MariaDB Platform: {e}")
+    sys.exit(1)
+
+# Get Cursor
+cursor = db.cursor()
 
 bot = Client(intents=Intents.default())
 slash = SlashCommand(bot,sync_commands=True)
@@ -126,6 +145,7 @@ async def _poll(ctx, title, option_one, option_two, option_three = "DefString120
     emojis_unicode = ['0\u20e3','1\u20e3','2\u20e3','3\u20e3','4\u20e3','5\u20e3','6\u20e3','7\u20e3','8\u20e3','9\u20e3']
     Description = ""
     interations = 0
+
     for i in list:
         if i == "DefString12083":
             # set value to = ""
@@ -136,12 +156,23 @@ async def _poll(ctx, title, option_one, option_two, option_three = "DefString120
 
     embed = discord.Embed(title=f"{title}", description=Description, color=discord.Color.blue())
 
-    if multiple_choice == True:
-        embed.set_footer(text="You can vote for multiple options")
-    else:
-        embed.set_footer(text="Only vote for one option! if you vote for multiple by the end of the poll, your votes won't be counted")
+    #get an ID for the poll by querying the database and incrementing the ID by 1
+    cursor.execute("SELECT count(*) FROM Polls")
+    find = cursor.fetchone()[0]
 
-    await ctx.send(embed=embed)
+    id = str(find).zfill(7)
+
+    print(f"ID: {id}")
+
+    if multiple_choice == True:
+        embed.set_footer(text=f"You can vote for multiple options • ID: {id}")
+    else:
+        embed.set_footer(text=f"Only vote for one option! if you have multiple votes by the end of the poll, your votes won't be counted • ID: {id}")
+
+    message = await ctx.send(embed=embed)
+
+    cursor.execute("INSERT INTO Polls (message_id, title, opt1, opt2, opt3, opt4, opt5, opt6, opt7, opt8, opt9, opt10, multi, poll_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (message.id, title, list[0], list[1], list[2], list[3], list[4], list[5], list[6], list[7], list[8], list[9], multiple_choice, id))
+    db.commit()
 
     for x in range(interations):
         if x == 0:
@@ -175,7 +206,80 @@ async def _poll(ctx, title, option_one, option_two, option_three = "DefString120
             emoji = '9\u20e3'
             await ctx.message.add_reaction(emoji)
         
+@slash.slash(name="endpoll",description="Ends a poll", options=[create_option(
+            name="poll_id",
+            description="The ID of the poll you would like to end",
+            option_type=3,
+            required=True)], guild_ids=guild_ids_lst) 
+async def _poll(ctx, poll_id = 0):
+    print(f"Info:\npoll_id: {poll_id}")
+
+    cursor.execute("SELECT * FROM Polls WHERE poll_id = %s", (poll_id,))
+    poll = cursor.fetchone()
+
+    if poll == None:
+        await ctx.send("That poll doesn't exist")
+        return
     
+    if "End1221:" in str(poll[1]):
+        await ctx.send("That poll has already been ended")
+        return
+
+    channel = bot.get_channel(ctx.channel.id)
+    msg = await channel.fetch_message(int(poll[0]))
+    print(msg) 
+            
+    reactions = msg.reactions
+
+    temp = []
+
+    for reaction in reactions:
+        temp.append([reaction.count,""])
+        print("reaction.count = " + str(reaction.count))
+
+    i = 0
+    for x in range(12):
+        if x < 2 or x > 12:
+            pass
+        else:
+            print("out = " + str(x))
+            if poll[x] != "":
+                print("in = " + str(x))
+                temp[i][1] = poll[x]
+                i = i + 1
+
     
+    # Bubble sort!
+    for u in range(len(temp)):
+        for v in range(0, len(temp)-u-1):
+            if int(temp[v][0]) > temp[v+1][0]:
+                temp[v][0], temp[v+1][0] = temp[v+1][0], temp[v][0]
+    
+    description = "**"
+    y = 0
+    for x in range(len(temp)):
+        description = description + f"{temp[len(temp)-1-x][0]} - {temp[len(temp)-1-x][1]}"
+
+        if y == 0:
+            description = description + "**\n"
+            y = 1
+        else:
+            description = description + "\n"
+    
+    print(description)
+
+    embed = discord.Embed(title=f"{poll[1]}", description=description, color=discord.Color.red())
+    embed.set_footer(text=f"Poll ended • ID: {poll_id}")
+    await ctx.send(embed=embed)
+
+    rename = "End1221:" + poll[1]
+    cursor.execute("UPDATE Polls SET title = %s WHERE poll_id = %s", (rename, poll_id))
+    db.commit()
+
+
+
+        
+
+
 
 bot.run(bot_token)
