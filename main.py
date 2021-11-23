@@ -120,4 +120,62 @@ async def _poll(ctx, title, option_one, option_two, option_three = "DefString120
     print(f"option9: {option_nine}")
     print(f"option10: {option_ten}")
 
+    # compile into list and set default values to null
+    list = [option_one, option_two, option_three, option_four, option_five, option_six, option_seven, option_eight, option_nine, option_ten]
+    emojis = [":zero:",":one:",":two:",":three:",":four:",":five:",":six:",":seven:",":eight:",":nine:"]
+    emojis_unicode = ['0\u20e3','1\u20e3','2\u20e3','3\u20e3','4\u20e3','5\u20e3','6\u20e3','7\u20e3','8\u20e3','9\u20e3']
+    Description = ""
+    interations = 0
+    for i in list:
+        if i == "DefString12083":
+            # set value to = ""
+            list[list.index(i)] = ""
+        else:
+            Description = Description + f"{emojis[interations]} {i}\n"
+            interations = interations + 1
+
+    embed = discord.Embed(title=f"{title}", description=Description, color=discord.Color.blue())
+
+    if multiple_choice == True:
+        embed.set_footer(text="You can vote for multiple options")
+    else:
+        embed.set_footer(text="Only vote for one option! if you vote for multiple by the end of the poll, your votes won't be counted")
+
+    await ctx.send(embed=embed)
+
+    for x in range(interations):
+        if x == 0:
+            emoji = '0\u20e3'
+            await ctx.message.add_reaction(emoji)
+        elif x == 1:
+            emoji = '1\u20e3'
+            await ctx.message.add_reaction(emoji)
+        elif x == 2:
+            emoji = '2\u20e3'
+            await ctx.message.add_reaction(emoji)
+        elif x == 3:
+            emoji = '3\u20e3'
+            await ctx.message.add_reaction(emoji)
+        elif x == 4:
+            emoji = '4\u20e3'
+            await ctx.message.add_reaction(emoji)
+        elif x == 5:
+            emoji = '5\u20e3'
+            await ctx.message.add_reaction(emoji)
+        elif x == 6:
+            emoji = '6\u20e3'
+            await ctx.message.add_reaction(emoji)
+        elif x == 7:
+            emoji = '7\u20e3'
+            await ctx.message.add_reaction(emoji)
+        elif x == 8:
+            emoji = '8\u20e3'
+            await ctx.message.add_reaction(emoji)
+        elif x == 9:
+            emoji = '9\u20e3'
+            await ctx.message.add_reaction(emoji)
+        
+    
+    
+
 bot.run(bot_token)
