@@ -248,17 +248,14 @@ async def _poll(ctx, poll_id = 0):
                 temp[i][1] = poll[x]
                 i = i + 1
 
-    
-    # Bubble sort!
-    for u in range(len(temp)):
-        for v in range(0, len(temp)-u-1):
-            if int(temp[v][0]) > temp[v+1][0]:
-                temp[v][0], temp[v+1][0] = temp[v+1][0], temp[v][0]
-    
+    print(temp)
+    temp.sort(reverse=True)
+    print(temp)
+
     description = "**"
     y = 0
     for x in range(len(temp)):
-        description = description + f"{temp[len(temp)-1-x][0]} - {temp[len(temp)-1-x][1]}"
+        description = description + f"{temp[x][0]} - {temp[x][1]}"
 
         if y == 0:
             description = description + "**\n"
