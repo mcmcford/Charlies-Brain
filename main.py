@@ -1,6 +1,7 @@
 import os
 from re import S
 import sys
+import datetime
 import discord
 import mariadb
 import configparser
@@ -227,7 +228,6 @@ async def _poll(ctx, poll_id = 0):
 
     channel = bot.get_channel(ctx.channel.id)
     msg = await channel.fetch_message(int(poll[0]))
-    print(msg) 
             
     reactions = msg.reactions
 
@@ -235,22 +235,17 @@ async def _poll(ctx, poll_id = 0):
 
     for reaction in reactions:
         temp.append([reaction.count,""])
-        print("reaction.count = " + str(reaction.count))
 
     i = 0
     for x in range(12):
         if x < 2 or x > 12:
             pass
         else:
-            print("out = " + str(x))
             if poll[x] != "":
-                print("in = " + str(x))
                 temp[i][1] = poll[x]
                 i = i + 1
 
-    print(temp)
     temp.sort(reverse=True)
-    print(temp)
 
     description = "**"
     y = 0
@@ -266,7 +261,7 @@ async def _poll(ctx, poll_id = 0):
     print(description)
 
     embed = discord.Embed(title=f"{poll[1]}", description=description, color=discord.Color.red())
-    embed.set_footer(text=f"Poll ended • ID: {poll_id}")
+    embed.set_footer(text=f"Poll ended @ {datetime.datetime.now()} • ID: {poll_id}")
     await ctx.send(embed=embed)
 
     rename = "End1221:" + poll[1]
