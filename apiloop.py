@@ -6,6 +6,7 @@ import discord
 import mariadb
 import datetime
 import requests
+import traceback
 import configparser
 from discord import Client, Intents, Embed
 from discord_slash import SlashCommand, SlashContext
@@ -88,7 +89,6 @@ async def get_steam_users():
     thresholds = thresholds_db[0].split(",")
 
     for user in users_db:
-
         date = datetime.datetime.now()
         print(date.strftime("%Y-%m-%d %H:%M:%S") + f" - checking user: {user}") ## debug print
         
@@ -113,6 +113,10 @@ async def get_steam_users():
             if games != str(user[6]):
                 await check_steams_users_games(json_data['response']['games'],str(user[1]))
 
+                # update the users game count
+                cursor.execute(f"UPDATE users SET games = {games} WHERE steam_id = '{user[1]}'")
+                db.commit()
+
             if int(games) > 0:
                 games = json_data['response']['games']
 
@@ -123,13 +127,15 @@ async def get_steam_users():
                     # check game hours
                     await check_hours(game,game_from_db,thresholds)
         except:
-            print("Error")            
+            print("\n\n" + date.strftime("%Y-%m-%d %H:%M:%S") + " - Error:")
+            # print traceback
+            traceback.print_exc()      
 
 async def check_hours(game,game_from_db,thresholds):
 
     # compare previously collected hours to the current hours to see if they have changed
     # 999999987 is the default value for when people have no hours, this avoids the issue of a bunch of notifications when someone changes their account from private to public
-    if (int(game['playtime_forever']) != int(game_from_db[1])) and (int(game['playtime_forever']) != 999999987):
+    if (int(game['playtime_forever']) != int(game_from_db[1])) and (int(game['playtime_forever']) != 0):
 
         print(f"{game_from_db[5]} has gained time in: {game['appid']} ({str(game_from_db[1])} to {str(game['playtime_forever'])})")
 

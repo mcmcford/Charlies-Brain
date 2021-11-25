@@ -16,7 +16,7 @@ guild_ids_lst = [713068366419722300,682542511797043207]
 config = configparser.ConfigParser()
 
 if os.path.exists('config.ini') == False:
-    config['DEFAULT'] = {'bot_token': '123xyz'}
+    config['DEFAULT'] = {'bot_token': '123xyz','steam_api_key': '123xyz'}
     config['DATABASE'] = {'db_username': 'defaultusername','db_password': 'defaultpassword','db_ip': 'dbip','db_port': '3306'}
     with open('config.ini', 'w') as configfile:
         config.write(configfile)
@@ -33,21 +33,31 @@ db_password = config['DATABASE']['db_password']
 db_ip = config['DATABASE']['db_ip']
 db_port = int(config['DATABASE']['db_port'])
 
-# Connect to MariaDB Platform
-try:
-    db = mariadb.connect(
-        user=db_username,
-        password=db_password,
-        host=db_ip,
-        port=db_port,
-        database="Charlies_AI"
-    )
-except mariadb.Error as e:
-    print(f"Error connecting to MariaDB Platform: {e}")
-    sys.exit(1)
+class connect():
+    def __init__(self):
+        # Connect to MariaDB Platform
+        try:
+            self.db = mariadb.connect(
+                user=db_username,
+                password=db_password,
+                host=db_ip,
+                port=db_port,
+                database="Charlies_AI"
+            )
+        except mariadb.Error as e:
+            print(f"Error connecting to MariaDB Platform: {e}")
+            sys.exit(1)
 
-# Get Cursor
-cursor = db.cursor()
+        # Get Cursor
+        self.cursor = self.db.cursor()
+
+def disconnect(database):
+    # Disconnect from MariaDB Platform
+    cur = database.cursor
+    d = database.db
+    cur.close()
+    d.close()
+
 
 bot = Client(intents=Intents.default())
 slash = SlashCommand(bot,sync_commands=True)
@@ -56,6 +66,7 @@ slash = SlashCommand(bot,sync_commands=True)
 async def on_ready():
     print("Logged in as " + str(bot.user))
     print("User ID: " + str(bot.user.id))
+    print("Command module")
 
     await bot.change_presence(activity=discord.Game(name="if you see me - no you dont"))
 
@@ -124,9 +135,13 @@ async def on_ready():
             required=False)
         ],
     guild_ids=guild_ids_lst)
-
 # the reason some of these are declared as a random string is to ensure the command suceeds (no null pass overs) and the user likely wont use that string in a poll
 async def _poll(ctx, title, option_one, option_two, option_three = "DefString12083", option_four = "DefString12083", option_five = "DefString12083", option_six = "DefString12083", option_seven = "DefString12083", option_eight = "DefString12083", option_nine = "DefString12083", option_ten = "DefString12083", multiple_choice = False):
+    
+    database = connect()
+    cur = database.cursor
+    d = database.db
+
     print(f"Info:\ntitle: {title}")
     print(f"multiple choice: {multiple_choice}")
     print(f"option1: {option_one}")
@@ -158,8 +173,8 @@ async def _poll(ctx, title, option_one, option_two, option_three = "DefString120
     embed = discord.Embed(title=f"{title}", description=Description, color=discord.Color.blue())
 
     #get an ID for the poll by querying the database and incrementing the ID by 1
-    cursor.execute("SELECT count(*) FROM Polls")
-    find = cursor.fetchone()[0]
+    cur.execute("SELECT count(*) FROM Polls")
+    find = cur.fetchone()[0]
 
     id = str(find).zfill(7)
 
@@ -172,8 +187,8 @@ async def _poll(ctx, title, option_one, option_two, option_three = "DefString120
 
     message = await ctx.send(embed=embed)
 
-    cursor.execute("INSERT INTO Polls (message_id, title, opt1, opt2, opt3, opt4, opt5, opt6, opt7, opt8, opt9, opt10, multi, poll_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (message.id, title, list[0], list[1], list[2], list[3], list[4], list[5], list[6], list[7], list[8], list[9], multiple_choice, id))
-    db.commit()
+    cur.execute("INSERT INTO Polls (message_id, title, opt1, opt2, opt3, opt4, opt5, opt6, opt7, opt8, opt9, opt10, multi, poll_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (message.id, title, list[0], list[1], list[2], list[3], list[4], list[5], list[6], list[7], list[8], list[9], multiple_choice, id))
+    d.commit()
 
     for x in range(interations):
         if x == 0:
@@ -206,14 +221,21 @@ async def _poll(ctx, title, option_one, option_two, option_three = "DefString120
         elif x == 9:
             emoji = '9\u20e3'
             await ctx.message.add_reaction(emoji)
-        
+
+    disconnect(database)
+
+
 @slash.slash(name="endpoll",description="Ends a poll", options=[create_option(
             name="poll_id",
             description="The ID of the poll you would like to end",
             option_type=3,
             required=True)], guild_ids=guild_ids_lst) 
-async def _poll(ctx, poll_id = 0):
+async def _endpoll(ctx, poll_id = 0):
     print(f"Info:\npoll_id: {poll_id}")
+
+    database = connect()
+    cursor = database.cursor
+    db = database.db
 
     cursor.execute("SELECT * FROM Polls WHERE poll_id = %s", (poll_id,))
     poll = cursor.fetchone()
@@ -268,10 +290,11 @@ async def _poll(ctx, poll_id = 0):
     cursor.execute("UPDATE Polls SET title = %s WHERE poll_id = %s", (rename, poll_id))
     db.commit()
 
+    disconnect(database)
+
 
 
         
-
 
 
 bot.run(bot_token)
