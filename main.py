@@ -292,6 +292,82 @@ async def _endpoll(ctx, poll_id = 0):
 
     disconnect(database)
 
+@slash.slash(name="toggle_new_game_notifications",description="Enable / Disable notifications in discord when you get a new game", options=[create_option(
+            name="toggle",
+            description="Enable / Disable notifications in discord when you get a new game",
+            option_type=5,
+            required=True)], guild_ids=guild_ids_lst) 
+async def _toggle_new_game_notifications(ctx,toggle: bool):
+
+    database = connect()
+    cursor = database.cursor
+    db = database.db
+
+    cursor.execute(f"SELECT new_game_notif FROM users WHERE discord_id = '{ctx.author.id}'")
+    new_game_notif = cursor.fetchone()[0]
+
+    if new_game_notif == 1 and toggle == True:
+        await ctx.send("You already have notifications enabled")
+        disconnect(database)
+        return
+    elif new_game_notif == 0 and toggle == False:
+        await ctx.send("You already have notifications disabled")
+        disconnect(database)
+        return
+
+    if toggle == True:
+        cursor.execute("UPDATE users SET new_game_notif = %s WHERE discord_id = %s", (1, ctx.author.id))
+        db.commit()
+
+        await ctx.send("Notifications will now be posted when you get a new game")
+
+    elif toggle == False:
+        cursor.execute("UPDATE users SET new_game_notif = %s WHERE discord_id = %s", (0, ctx.author.id))
+        db.commit()
+        
+        await ctx.send("Notifications will no longer be posted when you get a new game")
+
+    disconnect(database)
+
+    
+@slash.slash(name="toggle_hours_notifications",description="Enable / Disable notifications in discord when you achieve a certain amount of hours in a game", options=[create_option(
+            name="toggle",
+            description="Enable / Disable notifications in discord when you get pass an hours freshhold in a game",
+            option_type=5,
+            required=True)], guild_ids=guild_ids_lst) 
+async def _toggle_hours_notifications(ctx,toggle: bool):
+
+    database = connect()
+    cursor = database.cursor
+    db = database.db
+
+    cursor.execute(f"SELECT game_hours_notif FROM users WHERE discord_id = '{ctx.author.id}'")
+    new_game_notif = cursor.fetchone()[0]
+
+    if new_game_notif == 1 and toggle == True:
+        await ctx.send("You already have notifications enabled")
+        disconnect(database)
+        return
+    elif new_game_notif == 0 and toggle == False:
+        await ctx.send("You already have notifications disabled")
+        disconnect(database)
+        return
+
+    if toggle == True:
+        cursor.execute("UPDATE users SET game_hours_notif = %s WHERE discord_id = %s", (1, ctx.author.id))
+        db.commit()
+
+        await ctx.send("Notifications will now be posted when you get a new game")
+
+    elif toggle == False:
+        cursor.execute("UPDATE users SET game_hours_notif = %s WHERE discord_id = %s", (0, ctx.author.id))
+        db.commit()
+        
+        await ctx.send("Notifications will no longer be posted when you get a new game")
+
+    disconnect(database)
+
+    
 
 
         

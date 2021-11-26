@@ -110,7 +110,7 @@ async def get_steam_users():
         try:
             games = str(json_data['response']['game_count'])
 
-            if games != str(user[6]):
+            if int(games) > int(user[6]):
                 await check_steams_users_games(json_data['response']['games'],str(user[1]))
 
                 # update the users game count
@@ -229,28 +229,30 @@ async def check_steams_users_games(games,steam_id):
             cursor.execute(f"SELECT * FROM users WHERE steam_id = {steam_id}")
             user = cursor.fetchone()
 
-            # build and embed
-            appid = game['appid']
-            print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  " - Sending API request")
-            response = requests.get(f"https://store.steampowered.com/api/appdetails?appids={game['appid']}&format=json", headers={"User-Agent": "Mozilla/5.0 (Platform; Security; OS-or-CPU; Localization; rv:1.4) Gecko/20030624 Netscape/7.1 (ax)"})
-            print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  f" - API Response: {response.status_code}")
+            if user[2] == 1 or str(user[2]) == "1":
 
-            increment()
+                # build and embed
+                appid = game['appid']
+                print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  " - Sending API request")
+                response = requests.get(f"https://store.steampowered.com/api/appdetails?appids={game['appid']}&format=json", headers={"User-Agent": "Mozilla/5.0 (Platform; Security; OS-or-CPU; Localization; rv:1.4) Gecko/20030624 Netscape/7.1 (ax)"})
+                print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  f" - API Response: {response.status_code}")
 
-            json_data = json.loads(str(response.text))
+                increment()
 
-            gameinfo = json_data[f'{appid}']['data']
+                json_data = json.loads(str(response.text))
 
-            cursor.execute(f"SELECT _key FROM config WHERE name = 'achievement_channel'")
-            channel_id = cursor.fetchone()
-            
-            embed = discord.Embed(title=f"New game!", description=f"<@!{str(user[0])}> has just got the game: {gameinfo['name']}", color=0x00ff00)
-            # set the author
-            # get discord users avatar
-            userValue = await bot.fetch_user(int(user[0]))
-            embed.set_author(name=f"{userValue.name}", icon_url=f"{userValue.avatar_url}")
-            embed.set_thumbnail(url=gameinfo['header_image'])
-            await bot.get_channel(int(channel_id[0])).send(embed=embed)
+                gameinfo = json_data[f'{appid}']['data']
+
+                cursor.execute(f"SELECT _key FROM config WHERE name = 'achievement_channel'")
+                channel_id = cursor.fetchone()
+                
+                embed = discord.Embed(title=f"New game!", description=f"<@!{str(user[0])}> has just got the game: {gameinfo['name']}", color=0x00ff00)
+                # set the author
+                # get discord users avatar
+                userValue = await bot.fetch_user(int(user[0]))
+                embed.set_author(name=f"{userValue.name}", icon_url=f"{userValue.avatar_url}")
+                embed.set_thumbnail(url=gameinfo['header_image'])
+                await bot.get_channel(int(channel_id[0])).send(embed=embed)
 
             print(f"user {steam_id} has just got the game {game['appid']}")
 
