@@ -8,6 +8,7 @@ import datetime
 import requests
 import traceback
 import configparser
+from PIL import Image
 from discord import Client, Intents, Embed
 from discord_slash import SlashCommand, SlashContext
 from discord_slash.context import MenuContext
@@ -211,6 +212,10 @@ async def check_steams_users_games(games,steam_id):
     cursor.execute(f"SELECT * FROM games WHERE steam_id = '{steam_id}'")
     games_db = cursor.fetchall()
 
+    sendmessage_bool = False
+    game_names = []
+    game_thumbs = []
+
     for game in games:
         
         found_bool = False
@@ -230,6 +235,8 @@ async def check_steams_users_games(games,steam_id):
             user = cursor.fetchone()
 
             if user[2] == 1 or str(user[2]) == "1":
+                
+                sendmessage_bool = True
 
                 # build and embed
                 appid = game['appid']
@@ -243,18 +250,44 @@ async def check_steams_users_games(games,steam_id):
 
                 gameinfo = json_data[f'{appid}']['data']
 
-                cursor.execute(f"SELECT _key FROM config WHERE name = 'achievement_channel'")
-                channel_id = cursor.fetchone()
-                
-                embed = discord.Embed(title=f"New game!", description=f"<@!{str(user[0])}> has just got the game: {gameinfo['name']}", color=0x00ff00)
-                # set the author
-                # get discord users avatar
-                userValue = await bot.fetch_user(int(user[0]))
-                embed.set_author(name=f"{userValue.name}", icon_url=f"{userValue.avatar_url}")
-                embed.set_thumbnail(url=gameinfo['header_image'])
-                await bot.get_channel(int(channel_id[0])).send(embed=embed)
+                game_names.append(gameinfo['name'])
+                game_thumbs.append(gameinfo['header_image'])
 
+
+                
+                
             print(f"user {steam_id} has just got the game {game['appid']}")
+    
+    if sendmessage_bool == True:
+        
+        cursor.execute(f"SELECT _key FROM config WHERE name = 'achievement_channel'")
+        channel_id = cursor.fetchone()
+
+        userValue = await bot.fetch_user(int(user[0]))
+
+
+        if len(game_names) == 1:
+            description = f"<@!{str(user[0])}> has just got the game:\n"
+            title = "New game!"
+        else:
+            description = f"<@!{str(user[0])}> has just got the games:\n"
+            title = "New games!"
+            merge_images(game_thumbs)
+            
+        for game_name in game_names:
+            description += f"{game_name}\n"
+
+        embed = discord.Embed(title=title, description=description, color=0x00ff00)
+        embed.set_author(name=f"{userValue.name}", icon_url=f"{userValue.avatar_url}")
+
+
+        if len(game_names) == 1:
+            embed.set_thumbnail(url=game_thumbs[0])
+            await bot.get_channel(int(channel_id[0])).send(embed=embed)
+        else:
+            file = discord.File("result.jpeg", filename="image.jpeg")
+            embed.set_thumbnail(url="attachment://image.jpeg")
+            await bot.get_channel(int(channel_id[0])).send(file=file, embed=embed)
 
 def increment():
     # increase the count of API requests
@@ -264,6 +297,33 @@ def increment():
 
     cursor.execute(f"UPDATE config SET _key = {count} WHERE name = 'queries'")
     db.commit()
-        
+
+def merge_images(list):
+
+    i = 0
+    result_width = 0
+    result_height = 0
+
+    for url in list:
+        img_data = requests.get(url).content
+        with open(f'image_name{i}.jpeg', 'wb') as handler:
+            handler.write(img_data)
+        result_width = max(result_width, Image.open(f'image_name{i}.jpeg').size[0])
+        result_height += Image.open(f'image_name{i}.jpeg').size[1]
+        i += 1
+    
+
+    result = Image.new('RGB', (result_width, result_height))
+
+    for i in range(len(list)):
+        img = Image.open(f'image_name{i}.jpeg')
+        result.paste(img, (0, i * img.size[1]))
+
+    # delete all the images
+    for i in range(len(list)):
+        os.remove(f'image_name{i}.jpeg')
+
+    # save the image
+    result.save('result.jpeg')   
 
 bot.run(bot_token)
