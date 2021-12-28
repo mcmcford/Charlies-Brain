@@ -125,8 +125,14 @@ async def get_steam_users():
                     cursor.execute(f"SELECT * FROM games WHERE appid = {game['appid']} AND steam_id = {str(user[1])}")
                     game_from_db = cursor.fetchone()
 
-                    # check game hours
-                    await check_hours(game,game_from_db,thresholds)
+
+                    try:
+                        # check game hours
+                        await check_hours(game,game_from_db,thresholds)
+                    except:
+                        error_str = f"SteamID: {str(user[1])}\nAppID: {str(game['appid'])}\nGame = {str(game)}\nGame_from_db = {str(game_from_db)}"
+                        await onError(error_str,str(user[0]))
+
         except:
             print("\n\n" + date.strftime("%Y-%m-%d %H:%M:%S") + " - Error:")
             # print traceback
@@ -136,6 +142,10 @@ async def check_hours(game,game_from_db,thresholds):
 
     # compare previously collected hours to the current hours to see if they have changed
     # 999999987 is the default value for when people have no hours, this avoids the issue of a bunch of notifications when someone changes their account from private to public
+    
+    #print("game['playtime_forever']" + str(game['playtime_forever']))
+    #print("game_from_db[1]" + str(game_from_db[1]))
+
     if (int(game['playtime_forever']) != int(game_from_db[1])) and (int(game['playtime_forever']) != 0):
 
         print(f"{game_from_db[5]} has gained time in: {game['appid']} ({str(game_from_db[1])} to {str(game['playtime_forever'])})")
@@ -325,5 +335,22 @@ def merge_images(list):
 
     # save the image
     result.save('result.jpeg')   
+
+async def onError(error,user_id):
+    
+    #get get debug channel from db
+    cursor.execute("SELECT _key FROM config WHERE name = ?",("debug_channel",))
+    channel_id = cursor.fetchone()
+
+
+    channel = bot.get_channel(int(channel_id[0]))
+
+    unix_time = time.time()
+    time_to_int = round(unix_time,0)
+
+
+    print(f"\n\n[{time_to_int}] - Guild ID: " + str(user_id))
+    print("Error: " + str(error) + "\n")
+    await channel.send("<t:" + str(int(time_to_int)) +":F> in " + str(user_id) +":\n" + str(error))
 
 bot.run(bot_token)
