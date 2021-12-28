@@ -322,19 +322,47 @@ def merge_images(list):
         result_height += Image.open(f'image_name{i}.jpeg').size[1]
         i += 1
     
+    if len(list) >= 4 and len(list) % 2 == 0:
+        height = 0
 
-    result = Image.new('RGB', (result_width, result_height))
+        result = Image.new('RGB', (result_width*2, int(result_height/2)))
+        for i in range(0, len(list), 2):
+            img1 = Image.open(f'image_name{i}.jpeg')
+            img2 = Image.open(f'image_name{i+1}.jpeg')
+            result.paste(img1, (0, height))
+            result.paste(img2, (result_width, height))
+            height += img1.size[1]
+    elif len(list) >= 4 and len(list) % 2 != 0:
+        height = 0
 
-    for i in range(len(list)):
-        img = Image.open(f'image_name{i}.jpeg')
-        result.paste(img, (0, i * img.size[1]))
+        result = Image.new('RGB', (result_width*2, int((result_height/2) + (result_height/len(list)/2))))
+        for i in range(0, len(list), 2):
+            if i != len(list) - 1:
+                img1 = Image.open(f'image_name{i}.jpeg')
+                img2 = Image.open(f'image_name{i+1}.jpeg')
+                result.paste(img1, (0, height))
+                result.paste(img2, (result_width, height))
+                height += img1.size[1]
+            else:
+                img1 = Image.open(f'image_name{i}.jpeg')
+                img2 = Image.open('default.jpeg')
+                result.paste(img1, (0, height))
+                result.paste(img2, (result_width, height))
+                break
+
+    else:
+        result = Image.new('RGB', (result_width, result_height))
+        for i in range(len(list)):
+            img = Image.open(f'image_name{i}.jpeg')
+            result.paste(img, (0, i * img.size[1]))
 
     # delete all the images
     for i in range(len(list)):
         os.remove(f'image_name{i}.jpeg')
 
+    print("Merged and saved images")
     # save the image
-    result.save('result.jpeg')   
+    result.save('result.jpeg')
 
 async def onError(error,user_id):
     
@@ -351,6 +379,6 @@ async def onError(error,user_id):
 
     print(f"\n\n[{time_to_int}] - Guild ID: " + str(user_id))
     print("Error: " + str(error) + "\n")
-    await channel.send("<t:" + str(int(time_to_int)) +":F> in " + str(user_id) +":\n" + str(error))
+    await channel.send("<t:" + str(int(time_to_int)) +":F> for user (DiscordID): " + str(user_id) +":\n" + str(error))
 
 bot.run(bot_token)
