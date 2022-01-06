@@ -388,7 +388,15 @@ async def _gamestats(ctx, user_id = None):
 
     #get the users steam_id from the users table using their discord_id
     cursor.execute("SELECT steam_id FROM users WHERE discord_id = ?", (user_id,))
-    steam_id = cursor.fetchone()[0]
+    
+    try:
+        steam_id = cursor.fetchone()[0]
+        await ctx.send(f"Generating report now =)")
+    except:
+        await ctx.send(f"Looks like the user {user_id} isn't in the system yet")
+        disconnect(database)
+        return
+
 
     # get the users 'playtime_forever' from the games table using their steam_id,  ignoring any rows where the playtime_forever is 999999987
     cursor.execute("SELECT playtime_forever FROM games WHERE steam_id = ? AND playtime_forever != 999999987", (steam_id,))
