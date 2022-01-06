@@ -1,13 +1,15 @@
 import os
 from re import S
 import sys
+import json
 import datetime
 import discord
+import requests
 import mariadb
 import configparser
 from discord import Client, Intents, Embed
 from discord_slash import SlashCommand, SlashContext
-from discord_slash.context import MenuContext
+from discord_slash.context import InteractionContext, MenuContext
 from discord_slash.model import ContextMenuType
 from discord_slash.utils.manage_commands import create_option
 
@@ -366,6 +368,87 @@ async def _toggle_hours_notifications(ctx,toggle: bool):
         await ctx.send("Notifications will no longer be posted when you get a new game")
 
     disconnect(database)
+
+@slash.slash(name="gamestats",description="Get your hour stats in games", options=[create_option(
+            name="user_id",
+            description="The @mention or user ID of the user you would like to get stats for",
+            option_type=3,
+            required=False)], guild_ids=guild_ids_lst) 
+async def _gamestats(ctx, user_id = None):
+        
+    # clean the user id
+    if user_id == None:
+        user_id = ctx.author.id
+    else:
+        user_id = user_id.replace("<","").replace(">","").replace("@","").replace("!","").replace("#","").replace("&","").replace(" ","")
+
+    database = connect()
+    cursor = database.cursor
+    db = database.db
+
+    #get the users steam_id from the users table using their discord_id
+    cursor.execute("SELECT steam_id FROM users WHERE discord_id = ?", (user_id,))
+    steam_id = cursor.fetchone()[0]
+
+    # get the users 'playtime_forever' from the games table using their steam_id,  ignoring any rows where the playtime_forever is 999999987
+    cursor.execute("SELECT playtime_forever FROM games WHERE steam_id = ? AND playtime_forever != 999999987", (steam_id,))
+    playtime_forever = cursor.fetchall()
+
+    total_playtime = 0
+
+    for game in playtime_forever:
+        # add together all the playtime_forever values
+        total_playtime += int(game[0])
+    
+    #convert the total_playtime from minutes to hours
+    total_playtime = total_playtime / 60
+
+    # round total playtime hours to 2 decimal places
+    total_playtime = round(total_playtime, 2)
+
+    # get the users top 10 games from the games table using their steam_id, ignoring any rows where the playtime_forever is 999999987
+    cursor.execute("SELECT appid,playtime_forever FROM games WHERE steam_id = ? AND playtime_forever != 999999987 ORDER BY playtime_forever DESC LIMIT 10", (steam_id,))
+    top_10_games = cursor.fetchall()
+
+    disconnect(database)
+
+    description = f"Total Playtime: {total_playtime} hours.\n\nMost played games:\n"
+
+    for game in top_10_games:
+        # convert the playtime_forever from minutes to hours
+        hours = game[1] / 60
+        # round the playtime_forever to 2 decimal places
+        hours = round(hours, 2)
+
+        response = requests.get(f"https://store.steampowered.com/api/appdetails?appids={game[0]}&format=json", headers={"User-Agent": "Mozilla/5.0 (Platform; Security; OS-or-CPU; Localization; rv:1.4) Gecko/20030624 Netscape/7.1 (ax)"})
+        json_data = json.loads(str(response.text))
+
+        gameinfo = json_data[f'{game[0]}']['data']
+
+        name = gameinfo['name']
+
+        description += f"{name}: {hours} hours\n"
+
+
+    # fetch the discord name of the user using their discord_id
+    userDetails = await ctx.guild.fetch_member(user_id)
+    name = userDetails.name
+    pfp = userDetails.avatar_url
+
+    # create a discord embed to display the users stats
+    games_embed = discord.Embed(title=f"{name}'s Stats", description=description)
+    games_embed.set_thumbnail(url=pfp)
+    games_embed.set_footer(text=f"Requested by {ctx.author.name}", icon_url=ctx.author.avatar_url)
+
+    print(name)
+    print(pfp)
+    print(description)
+
+    # send the embed
+    #await InteractionContext.send(ctx, embed=games_embed)
+    # ctx.send doesn't work for some reason :shrug:
+    # will probably overhaul the entire bot at some point
+    message = await ctx.channel.send(embed=games_embed)
 
     
 
