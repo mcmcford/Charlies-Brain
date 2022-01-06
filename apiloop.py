@@ -102,7 +102,7 @@ async def get_steam_users():
 
         # request each users details from the API
         print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  " - Sending API request")
-        response = requests.get(f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={steam_token}&steamid={user[1]}&format=json", headers={"User-Agent": "Mozilla/5.0 (Platform; Security; OS-or-CPU; Localization; rv:1.4) Gecko/20030624 Netscape/7.1 (ax)"})
+        response = requests.get(f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={steam_token}&steamid={user[1]}&format=json&include_played_free_games=True", headers={"User-Agent": "Mozilla/5.0 (Platform; Security; OS-or-CPU; Localization; rv:1.4) Gecko/20030624 Netscape/7.1 (ax)"})
         print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  f" - API Response: {response.status_code}")
         increment()
         
@@ -188,7 +188,7 @@ async def check_hours(game,game_from_db,thresholds):
             
 def new_user(steam_id):
     print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  " - Sending API request")
-    response = requests.get(f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={steam_token}&steamid={steam_id}&format=json", headers={"User-Agent": "Mozilla/5.0 (Platform; Security; OS-or-CPU; Localization; rv:1.4) Gecko/20030624 Netscape/7.1 (ax)"})
+    response = requests.get(f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={steam_token}&steamid={steam_id}&format=json&include_played_free_games=True", headers={"User-Agent": "Mozilla/5.0 (Platform; Security; OS-or-CPU; Localization; rv:1.4) Gecko/20030624 Netscape/7.1 (ax)"})
     print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  f" - API Response: {response.status_code}")
 
     increment()

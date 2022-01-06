@@ -414,13 +414,18 @@ async def _gamestats(ctx, user_id = None):
     # round total playtime hours to 2 decimal places
     total_playtime = round(total_playtime, 2)
 
+    # convert to days
+    days = total_playtime / 24
+
+    days = round(days, 2)
+
     # get the users top 10 games from the games table using their steam_id, ignoring any rows where the playtime_forever is 999999987
     cursor.execute("SELECT appid,playtime_forever FROM games WHERE steam_id = ? AND playtime_forever != 999999987 ORDER BY playtime_forever DESC LIMIT 10", (steam_id,))
     top_10_games = cursor.fetchall()
 
     disconnect(database)
 
-    description = f"Total Playtime: {total_playtime} hours.\n\nMost played games:\n"
+    description = f"Total Playtime: {total_playtime} hours (or {days} days).\n\nMost played games:\n"
 
     for game in top_10_games:
         # convert the playtime_forever from minutes to hours
@@ -431,9 +436,15 @@ async def _gamestats(ctx, user_id = None):
         response = requests.get(f"https://store.steampowered.com/api/appdetails?appids={game[0]}&format=json", headers={"User-Agent": "Mozilla/5.0 (Platform; Security; OS-or-CPU; Localization; rv:1.4) Gecko/20030624 Netscape/7.1 (ax)"})
         json_data = json.loads(str(response.text))
 
-        gameinfo = json_data[f'{game[0]}']['data']
+        
 
-        name = gameinfo['name']
+        try:
+            gameinfo = json_data[f'{game[0]}']['data']
+
+            name = gameinfo['name']
+        except:
+            print(json_data)
+            name = f"**Error: {game[0]}**"
 
         description += f"{name}: {hours} hours\n"
 
