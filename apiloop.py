@@ -125,6 +125,14 @@ async def get_steam_users():
                     cursor.execute(f"SELECT * FROM games WHERE appid = {game['appid']} AND steam_id = {str(user[1])}")
                     game_from_db = cursor.fetchone()
 
+                    # if for whatever reason the game isn't in the DB, add it - this means for some reason the game count and the games in the DB are out of sync
+                    if game_from_db == None:
+                        print("adding game " + str(game['appid']) + " to DB")
+                        cursor.execute("INSERT INTO games (appid, playtime_forever, playtime_windows_forever, playtime_mac_forever, playtime_linux_forever, steam_id) VALUES (%s, %s, %s, %s, %s, %s)", (game['appid'], game['playtime_forever'], game['playtime_windows_forever'], game['playtime_mac_forever'], game['playtime_linux_forever'], str(user[1])))
+                        db.commit()
+                    
+                        cursor.execute(f"SELECT * FROM games WHERE appid = {game['appid']} AND steam_id = {str(user[1])}")
+                        game_from_db = cursor.fetchone()
 
                     try:
                         # check game hours
@@ -132,6 +140,7 @@ async def get_steam_users():
                     except:
                         error_str = f"SteamID: {str(user[1])}\nAppID: {str(game['appid'])}\nGame = {str(game)}\nGame_from_db = {str(game_from_db)}"
                         await onError(error_str,str(user[0]))
+                        traceback.print_exc()
 
         except:
             print("\n\n" + date.strftime("%Y-%m-%d %H:%M:%S") + " - Error:")
@@ -149,7 +158,7 @@ async def check_hours(game,game_from_db,thresholds):
     if (int(game['playtime_forever']) != int(game_from_db[1])) and (int(game['playtime_forever']) != 0):
 
         print(f"{game_from_db[5]} has gained time in: {game['appid']} ({str(game_from_db[1])} to {str(game['playtime_forever'])})")
-
+        
         # update the database if they have changed
         cursor.execute(f"UPDATE games SET playtime_forever = {game['playtime_forever']}, playtime_windows_forever = {game['playtime_windows_forever']}, playtime_mac_forever = {game['playtime_mac_forever']}, playtime_linux_forever = {game['playtime_linux_forever']} WHERE appid = {game['appid']} AND steam_id = {game_from_db[5]}")
         db.commit()
