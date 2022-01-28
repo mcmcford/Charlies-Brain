@@ -145,7 +145,11 @@ async def get_steam_users():
         except:
             print("\n\n" + date.strftime("%Y-%m-%d %H:%M:%S") + " - Error:")
             # print traceback
-            traceback.print_exc()      
+            traceback.print_exc() 
+            print("json_data['response'] = " + str(json_data['response']))
+            print("\n\n")
+
+              
 
 async def check_hours(game,game_from_db,thresholds):
 
