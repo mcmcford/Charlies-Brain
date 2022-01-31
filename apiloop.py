@@ -93,6 +93,9 @@ async def get_steam_users():
         date = datetime.datetime.now()
         print(date.strftime("%Y-%m-%d %H:%M:%S") + f" - checking user: {user}") ## debug print
         
+        # create a gap between each API request as to avoid API rate limits (shouldn't be hitting them but i am ... so best to be on the safe side)
+        time.sleep(45)
+
         # if the user has just been added to the db then we need to add all their games to the DB
         if user[6] == "" or user[6] == None:
             date = datetime.datetime.now()
