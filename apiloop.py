@@ -95,7 +95,7 @@ async def get_steam_users():
         
         # create a gap between each API request as to avoid API rate limits (shouldn't be hitting them but i am ... so best to be on the safe side)
         # get the time the bot is going to be sleeping for
-        cursor.execute("SELECT _key FROM config WHERE name = 'sleep'")
+        cursor.execute("SELECT _key FROM config WHERE name = 'request_sleep'")
         between_user_asleep_int = cursor.fetchone()
 
         # sleep for the amount of time specified in the config file
