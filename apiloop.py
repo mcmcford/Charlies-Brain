@@ -94,7 +94,13 @@ async def get_steam_users():
         print(date.strftime("%Y-%m-%d %H:%M:%S") + f" - checking user: {user}") ## debug print
         
         # create a gap between each API request as to avoid API rate limits (shouldn't be hitting them but i am ... so best to be on the safe side)
-        time.sleep(45)
+        # get the time the bot is going to be sleeping for
+        cursor.execute("SELECT _key FROM config WHERE name = 'sleep'")
+        between_user_asleep_int = cursor.fetchone()
+
+        # sleep for the amount of time specified in the config file
+        print(f"sleeping for {between_user_asleep_int[0]} seconds")
+        time.sleep(int(between_user_asleep_int[0]))
 
         # if the user has just been added to the db then we need to add all their games to the DB
         if user[6] == "" or user[6] == None:
