@@ -7,6 +7,7 @@ import discord
 import requests
 import mariadb
 import configparser
+import random as rand
 from discord import Client, Intents, Embed
 from discord_slash import SlashCommand, SlashContext
 from discord_slash.context import InteractionContext, MenuContext
@@ -469,7 +470,55 @@ async def _gamestats(ctx, user_id = None):
     # will probably overhaul the entire bot at some point
     message = await ctx.channel.send(embed=games_embed)
 
+@slash.slash(name="Gamertag",description="Generate a random gamertag", guild_ids=guild_ids_lst) 
+async def _gamertag(ctx):  
+
+    # find the length of the text files 'Nouns.txt' and 'Adjectives.txt'
+    nouns_file = open("Nouns.txt", "r")
+    nouns_list = nouns_file.readlines()
+    nouns_file_length = len(nouns_list)
     
+    adjectives_file = open("Adjectives.txt", "r")
+    adjectives_list = adjectives_file.readlines()
+    adjectives_file_length = len(adjectives_list)
+    
+    # generate a random number between 1 and the length of the text files
+    noun_index = rand.randint(1, nouns_file_length)
+    adjective_index = rand.randint(1, adjectives_file_length)
+
+    # generate a random number between 1 and 5
+    # this will decide if a number will be added to the end of the gamertag
+    include_int = rand.randint(1, 5)
+
+
+    # get the noun and adjective from the text files
+    noun = nouns_list[noun_index - 1]
+    adjective = adjectives_list[adjective_index - 1]
+
+    
+
+    # close the opened files
+    adjectives_file.close()
+    nouns_file.close()
+
+    # remove the newline character from the noun and adjective
+    noun = noun.replace("\n", "")
+    adjective = adjective.replace("\n", "")
+
+    # capitalize the first letter of the noun and adjective
+    noun = noun.capitalize()
+    adjective = adjective.capitalize()
+
+    # if the random number generated is 1, add a number to the end of the gamertag
+    if include_int == 1:
+        gamertag = f"{adjective}{noun}{rand.randint(1, 99)}"
+    else:
+        gamertag = f"{adjective}{noun}"
+
+    # return a message @ing the person who called the command, but not pinging them 
+    await ctx.send(f"**{gamertag}**")
+
+
 
 
         
