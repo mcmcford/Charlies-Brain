@@ -1,3 +1,4 @@
+from http.client import responses
 import os
 from re import S
 import sys
@@ -518,7 +519,47 @@ async def _gamertag(ctx):
     # return a message @ing the person who called the command, but not pinging them 
     await ctx.send(f"**{gamertag}**")
 
+@slash.slash(name="Roulette",description="Russian Roulette. Simple.", guild_ids=guild_ids_lst) 
+async def _roulette(ctx):  
 
+    # check if the user is an admin
+    if ctx.author.guild_permissions.administrator:
+
+        responses = ["you're an admin, you can't take the risk!","No!, not allowed","You know what happened last time you tried this. Not. Again."]
+
+        # generate a random number between 1 and and the length of the responses list
+        response_index = rand.randint(0, len(responses)-1)
+
+
+        await ctx.send(f"{ctx.author.mention} {responses[response_index]}")
+        return
+    
+    # generate a random number between 1 and 6 (7 to be a little less risky)
+    roll = rand.randint(1, 7)
+
+    # if the random number generated is 1, give them the role 'dead'
+    if roll == 1:
+
+        # get the name of a random user in the server
+        random_user = rand.choice(ctx.guild.members)
+
+        dead_responses = ['get fucked!',f'couldn\'t take living in the same world as {random_user} anymore!','passed away in the early hours of this morning','Died ... Ha!','you\'re dead!']
+        # generate a random number between 1 and and the length of the responses list
+        response_index = rand.randint(0, len(dead_responses)-1)
+
+        await ctx.author.add_roles(ctx.guild.get_role(944070170203291709))
+        await ctx.author.add_roles(ctx.guild.get_role(901624226665078784))
+        await ctx.send(f"{ctx.author.mention} {dead_responses[response_index]}")
+    else:
+
+        # list of responses for when the user is alive
+        alive_responses = ['you\'re still alive!','you\'re going to live another day!','you\'re alive i guess.','you survived ... somehow.','you\'re alive!','you live on','you live on unfortunately']
+        # generate a random number between 1 and and the length of the responses list
+        response_index = rand.randint(0, len(alive_responses)-1)
+
+        await ctx.send(f"{ctx.author.mention} {alive_responses[response_index]}")
+
+        
 
 
         

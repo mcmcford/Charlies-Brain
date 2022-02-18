@@ -159,7 +159,6 @@ async def get_steam_users():
             print("\n\n")
 
               
-
 async def check_hours(game,game_from_db,thresholds):
 
     # compare previously collected hours to the current hours to see if they have changed
