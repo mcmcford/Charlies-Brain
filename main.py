@@ -371,6 +371,43 @@ async def _toggle_hours_notifications(ctx,toggle: bool):
 
     disconnect(database)
 
+@slash.slash(name="enabled",description="Enable / Disable your account within charlies_AI", options=[create_option(
+            name="enabled",
+            description="Enable / Disable your account within charlies_AI (true = enabled, false = disabled)",
+            option_type=5,
+            required=True)], guild_ids=guild_ids_lst) 
+async def _enabled(ctx,enabled: bool):
+
+    database = connect()
+    cursor = database.cursor
+    db = database.db
+
+    cursor.execute(f"SELECT enabled FROM users WHERE discord_id = '{ctx.author.id}'")
+    new_game_notif = cursor.fetchone()[0]
+
+    if new_game_notif == 1 and enabled == True:
+        await ctx.send("Your account is already enabled")
+        disconnect(database)
+        return
+    elif new_game_notif == 0 and enabled == False:
+        await ctx.send("Your account is already disabled")
+        disconnect(database)
+        return
+
+    if enabled == True:
+        cursor.execute("UPDATE users SET enabled = %s WHERE discord_id = %s", (1, ctx.author.id))
+        db.commit()
+
+        await ctx.send("Your account is now enabled, I will search the discord API for changes in your account activity")
+
+    elif enabled == False:
+        cursor.execute("UPDATE users SET enabled = %s WHERE discord_id = %s", (0, ctx.author.id))
+        db.commit()
+        
+        await ctx.send("Your account is now disabled, I will no longer search the discord API for changes in your account activity")
+
+    disconnect(database)
+
 @slash.slash(name="gamestats",description="Get your hour stats in games", options=[create_option(
             name="user_id",
             description="The @mention or user ID of the user you would like to get stats for",

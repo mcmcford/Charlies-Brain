@@ -81,8 +81,8 @@ async def on_ready():
             await get_steam_users()
 
 async def get_steam_users():
-    # get all users who are going to be checked from the database
-    cursor.execute("SELECT * FROM users WHERE enabled = 1")
+    # get all users who are going to be checked from the database in random order
+    cursor.execute("SELECT * FROM users WHERE enabled = 1 ORDER BY RAND()")
     users_db = cursor.fetchall()
 
     cursor.execute("SELECT _key FROM config WHERE name = 'thresholds'")
