@@ -152,11 +152,29 @@ async def get_steam_users():
                         traceback.print_exc()
 
         except:
-            print("\n\n" + date.strftime("%Y-%m-%d %H:%M:%S") + " - Error:")
-            # print traceback
-            traceback.print_exc() 
-            print("json_data['response'] = " + str(json_data['response']))
-            print("\n\n")
+
+            # get the column failed_attempts from the database where the steam_id is the same as the current user
+            cursor.execute(f"SELECT failed_attempts FROM users WHERE steam_id = '{user[1]}'")
+
+            # get the failed_attempts from the database
+            failed_attempts = cursor.fetchone()
+
+            # if the failed_attempts is greater than the max allowed attempts then disable the user
+            if int(failed_attempts[0]) >= 2:
+                cursor.execute(f"UPDATE users SET enabled = 0 WHERE steam_id = '{user[1]}'")
+                db.commit()
+                print("user disabled")
+
+                # update the number of failed attempts to 0
+                cursor.execute(f"UPDATE users SET failed_attempts = 0 WHERE steam_id = '{user[1]}'")
+                db.commit()
+            else:
+                # increment the failed_attempts
+                cursor.execute(f"UPDATE users SET failed_attempts = {int(failed_attempts[0])+1} WHERE steam_id = '{user[1]}'")
+                db.commit()
+                print("failed attempts incremented for user " + str(user[1]))
+
+            # increment the value in the column failed_attempts in the database
 
               
 async def check_hours(game,game_from_db,thresholds):
