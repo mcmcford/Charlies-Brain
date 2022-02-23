@@ -174,8 +174,6 @@ async def get_steam_users():
                 db.commit()
                 print("failed attempts incremented for user " + str(user[1]))
 
-            # increment the value in the column failed_attempts in the database
-
               
 async def check_hours(game,game_from_db,thresholds):
 
