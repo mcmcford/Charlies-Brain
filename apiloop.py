@@ -91,7 +91,7 @@ async def get_steam_users():
 
     for user in users_db:
         date = datetime.datetime.now()
-        print(date.strftime("%Y-%m-%d %H:%M:%S") + f" - checking user: {user}") ## debug print
+        print(date.strftime("%Y-%m-%d %H:%M:%S") + f" - checking user: (Discord) {user[0]} / (Steam) {user[1]} ") ## debug print
         
         # create a gap between each API request as to avoid API rate limits (shouldn't be hitting them but i am ... so best to be on the safe side)
         # get the time the bot is going to be sleeping for
