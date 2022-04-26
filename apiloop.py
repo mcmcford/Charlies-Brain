@@ -89,93 +89,97 @@ async def get_steam_users():
     thresholds_db = cursor.fetchone()
     thresholds = thresholds_db[0].split(",")
 
+    # create a gap between each API request as to avoid API rate limits (shouldn't be hitting them but i am ... so best to be on the safe side)
+    # get the time the bot is going to be sleeping for
+    cursor.execute("SELECT _key FROM config WHERE name = 'request_sleep'")
+    between_user_asleep_int = cursor.fetchone()
+
     for user in users_db:
-        date = datetime.datetime.now()
-        print(date.strftime("%Y-%m-%d %H:%M:%S") + f" - checking user: (Discord) {user[0]} / (Steam) {user[1]} ") ## debug print
-        
-        # create a gap between each API request as to avoid API rate limits (shouldn't be hitting them but i am ... so best to be on the safe side)
-        # get the time the bot is going to be sleeping for
-        cursor.execute("SELECT _key FROM config WHERE name = 'request_sleep'")
-        between_user_asleep_int = cursor.fetchone()
+        await check_user(user, thresholds)
 
         # sleep for the amount of time specified in the config file
         print(f"sleeping for {between_user_asleep_int[0]} seconds")
         time.sleep(int(between_user_asleep_int[0]))
-
-        # if the user has just been added to the db then we need to add all their games to the DB
-        if user[6] == "" or user[6] == None:
-            date = datetime.datetime.now()
-            print(date.strftime("%Y-%m-%d %H:%M:%S") + f" - setting up new user") ## debug print
-            new_user(user[1])
-            return
-
-        # request each users details from the API
-        print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  " - Sending API request")
-        response = requests.get(f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={steam_token}&steamid={user[1]}&format=json&include_played_free_games=True", headers={"User-Agent": "Mozilla/5.0 (Platform; Security; OS-or-CPU; Localization; rv:1.4) Gecko/20030624 Netscape/7.1 (ax)"})
-        print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  f" - API Response: {response.status_code}")
-        increment()
         
-        json_data = json.loads(str(response.text))
+async def check_user(user, thresholds):
+    date = datetime.datetime.now()
+    print(date.strftime("%Y-%m-%d %H:%M:%S") + f" - checking user: (Discord) {user[0]} / (Steam) {user[1]} ") ## debug print
+    
+    # if the user has just been added to the db then we need to add all their games to the DB
+    if user[6] == "" or user[6] == None:
+        date = datetime.datetime.now()
+        print(date.strftime("%Y-%m-%d %H:%M:%S") + f" - setting up new user") ## debug print
+        new_user(user[1])
+        return
 
-        try:
-            games = str(json_data['response']['game_count'])
+    # request each users details from the API
+    print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  " - Sending API request")
+    response = requests.get(f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={steam_token}&steamid={user[1]}&format=json&include_played_free_games=True", headers={"User-Agent": "Mozilla/5.0 (Platform; Security; OS-or-CPU; Localization; rv:1.4) Gecko/20030624 Netscape/7.1 (ax)"})
+    print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  f" - API Response: {response.status_code}")
+    increment()
+    
+    json_data = json.loads(str(response.text))
 
-            if int(games) > int(user[6]):
-                await check_steams_users_games(json_data['response']['games'],str(user[1]))
+    try:
+        # game count according to the API
+        games = str(json_data['response']['game_count'])
 
-                # update the users game count
-                cursor.execute(f"UPDATE users SET games = {games} WHERE steam_id = '{user[1]}'")
-                db.commit()
+        # compare API game count to DB game count
+        if int(games) > int(user[6]):
+            await check_steams_users_games(json_data['response']['games'],str(user[1]))
 
-            if int(games) > 0:
-                games = json_data['response']['games']
+            # update the users game count
+            cursor.execute(f"UPDATE users SET games = {games} WHERE steam_id = '{user[1]}'")
+            db.commit()
 
-                for game in games:
+        if int(games) > 0:
+            games = json_data['response']['games']
+
+            for game in games:
+                cursor.execute(f"SELECT * FROM games WHERE appid = {game['appid']} AND steam_id = {str(user[1])}")
+                game_from_db = cursor.fetchone()
+
+                # if for whatever reason the game isn't in the DB, add it - this means for some reason the game count and the games in the DB are out of sync
+                if game_from_db == None:
+                    print("adding game " + str(game['appid']) + " to DB")
+                    cursor.execute("INSERT INTO games (appid, playtime_forever, playtime_windows_forever, playtime_mac_forever, playtime_linux_forever, steam_id) VALUES (%s, %s, %s, %s, %s, %s)", (game['appid'], game['playtime_forever'], game['playtime_windows_forever'], game['playtime_mac_forever'], game['playtime_linux_forever'], str(user[1])))
+                    db.commit()
+                
                     cursor.execute(f"SELECT * FROM games WHERE appid = {game['appid']} AND steam_id = {str(user[1])}")
                     game_from_db = cursor.fetchone()
 
-                    # if for whatever reason the game isn't in the DB, add it - this means for some reason the game count and the games in the DB are out of sync
-                    if game_from_db == None:
-                        print("adding game " + str(game['appid']) + " to DB")
-                        cursor.execute("INSERT INTO games (appid, playtime_forever, playtime_windows_forever, playtime_mac_forever, playtime_linux_forever, steam_id) VALUES (%s, %s, %s, %s, %s, %s)", (game['appid'], game['playtime_forever'], game['playtime_windows_forever'], game['playtime_mac_forever'], game['playtime_linux_forever'], str(user[1])))
-                        db.commit()
-                    
-                        cursor.execute(f"SELECT * FROM games WHERE appid = {game['appid']} AND steam_id = {str(user[1])}")
-                        game_from_db = cursor.fetchone()
+                try:
+                    # check game hours
+                    await check_hours(game,game_from_db,thresholds,user)
+                except:
+                    error_str = f"SteamID: {str(user[1])}\nAppID: {str(game['appid'])}\nGame = {str(game)}\nGame_from_db = {str(game_from_db)}"
+                    await onError(error_str,str(user[0]))
+                    traceback.print_exc()
 
-                    try:
-                        # check game hours
-                        await check_hours(game,game_from_db,thresholds)
-                    except:
-                        error_str = f"SteamID: {str(user[1])}\nAppID: {str(game['appid'])}\nGame = {str(game)}\nGame_from_db = {str(game_from_db)}"
-                        await onError(error_str,str(user[0]))
-                        traceback.print_exc()
+    except:
 
-        except:
+        # get the column failed_attempts from the database where the steam_id is the same as the current user
+        cursor.execute(f"SELECT failed_attempts FROM users WHERE steam_id = '{user[1]}'")
 
-            # get the column failed_attempts from the database where the steam_id is the same as the current user
-            cursor.execute(f"SELECT failed_attempts FROM users WHERE steam_id = '{user[1]}'")
+        # get the failed_attempts from the database
+        failed_attempts = cursor.fetchone()
 
-            # get the failed_attempts from the database
-            failed_attempts = cursor.fetchone()
+        # if the failed_attempts is greater than the max allowed attempts then disable the user
+        if int(failed_attempts[0]) >= 2:
+            cursor.execute(f"UPDATE users SET enabled = 0 WHERE steam_id = '{user[1]}'")
+            db.commit()
+            print("user disabled")
 
-            # if the failed_attempts is greater than the max allowed attempts then disable the user
-            if int(failed_attempts[0]) >= 2:
-                cursor.execute(f"UPDATE users SET enabled = 0 WHERE steam_id = '{user[1]}'")
-                db.commit()
-                print("user disabled")
-
-                # update the number of failed attempts to 0
-                cursor.execute(f"UPDATE users SET failed_attempts = 0 WHERE steam_id = '{user[1]}'")
-                db.commit()
-            else:
-                # increment the failed_attempts
-                cursor.execute(f"UPDATE users SET failed_attempts = {int(failed_attempts[0])+1} WHERE steam_id = '{user[1]}'")
-                db.commit()
-                print("failed attempts incremented for user " + str(user[1]))
-
+            # update the number of failed attempts to 0
+            cursor.execute(f"UPDATE users SET failed_attempts = 0 WHERE steam_id = '{user[1]}'")
+            db.commit()
+        else:
+            # increment the failed_attempts
+            cursor.execute(f"UPDATE users SET failed_attempts = {int(failed_attempts[0])+1} WHERE steam_id = '{user[1]}'")
+            db.commit()
+            print("failed attempts incremented for user " + str(user[1]))
               
-async def check_hours(game,game_from_db,thresholds):
+async def check_hours(game,game_from_db,thresholds,user):
 
     # compare previously collected hours to the current hours to see if they have changed
     # 999999987 is the default value for when people have no hours, this avoids the issue of a bunch of notifications when someone changes their account from private to public
@@ -194,9 +198,6 @@ async def check_hours(game,game_from_db,thresholds):
         # check if the user has passed one of the hours thresholds
         for threshold in thresholds:
             if int(game['playtime_forever']) >= int(threshold) and int(game_from_db[1]) < int(threshold):
-
-                cursor.execute(f"SELECT * FROM users WHERE steam_id = {game_from_db[5]}")
-                user = cursor.fetchone()
 
                 if user[4] == 1:
                     print(f"{user[5]} has passed {threshold} hours in {game['appid']}")
