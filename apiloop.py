@@ -149,8 +149,13 @@ async def check_user(user, thresholds):
                     game_from_db = cursor.fetchone()
 
                 try:
+                    
+                    # get custom thresholds
+                    cursor.execute(f"SELECT * FROM thresholds WHERE userid = ?", (str(user[0]),))
+                    custom_thresholds = cursor.fetchall()
+
                     # check game hours
-                    await check_hours(game,game_from_db,thresholds,user)
+                    await check_hours(game,game_from_db,thresholds,custom_thresholds,user)
                 except:
                     error_str = f"SteamID: {str(user[1])}\nAppID: {str(game['appid'])}\nGame = {str(game)}\nGame_from_db = {str(game_from_db)}"
                     await onError(error_str,str(user[0]))
@@ -179,13 +184,15 @@ async def check_user(user, thresholds):
             db.commit()
             print("failed attempts incremented for user " + str(user[1]))
               
-async def check_hours(game,game_from_db,thresholds,user):
+async def check_hours(game,game_from_db,thresholds,custom_thresholds,user):
 
     # compare previously collected hours to the current hours to see if they have changed
     # 999999987 is the default value for when people have no hours, this avoids the issue of a bunch of notifications when someone changes their account from private to public
     
     #print("game['playtime_forever']" + str(game['playtime_forever']))
     #print("game_from_db[1]" + str(game_from_db[1]))
+
+    skip_general_thresholds = False
 
     if (int(game['playtime_forever']) != int(game_from_db[1])) and (int(game['playtime_forever']) != 0):
 
@@ -195,34 +202,46 @@ async def check_hours(game,game_from_db,thresholds,user):
         cursor.execute(f"UPDATE games SET playtime_forever = {game['playtime_forever']}, playtime_windows_forever = {game['playtime_windows_forever']}, playtime_mac_forever = {game['playtime_mac_forever']}, playtime_linux_forever = {game['playtime_linux_forever']} WHERE appid = {game['appid']} AND steam_id = {game_from_db[5]}")
         db.commit()
 
+        cursor.execute(f"SELECT _key FROM config WHERE name = 'achievement_channel'")
+        channel_id = cursor.fetchone()[0]
+
+        for threshold in custom_thresholds:
+            if game['appid'] == threshold[1]:
+                if threshold[2].lower() == "modulo":
+                    if int(game['playtime_forever']) % int(threshold[3]) == 0:
+                        await send_notification(game,threshold,user,channel_id)
+                        skip_general_thresholds = True
+                
         # check if the user has passed one of the hours thresholds
-        for threshold in thresholds:
-            if int(game['playtime_forever']) >= int(threshold) and int(game_from_db[1]) < int(threshold):
+        if skip_general_thresholds == False:
+            for threshold in thresholds:
+                if int(game['playtime_forever']) >= int(threshold) and int(game_from_db[1]) < int(threshold):
+                    await send_notification(game,threshold,user,channel_id)
+        else:
+            print("skipping general thresholds")
 
-                if user[4] == 1:
-                    print(f"{user[5]} has passed {threshold} hours in {game['appid']}")
-                    # build and embed
-                    appid = game['appid']
-                    print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  " - Sending API request")
-                    response = requests.get(f"https://store.steampowered.com/api/appdetails?appids={game['appid']}&format=json", headers={"User-Agent": "Mozilla/5.0 (Platform; Security; OS-or-CPU; Localization; rv:1.4) Gecko/20030624 Netscape/7.1 (ax)"})
-                    print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  f" - API Response: {response.status_code}")
+async def send_notification(game,threshold,user,channel_id):
+    if user[4] == 1:
+        print(f"{user[5]} has passed {threshold} hours in {game['appid']}")
+        # build and embed
+        appid = game['appid']
+        print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  " - Sending API request")
+        response = requests.get(f"https://store.steampowered.com/api/appdetails?appids={game['appid']}&format=json", headers={"User-Agent": "Mozilla/5.0 (Platform; Security; OS-or-CPU; Localization; rv:1.4) Gecko/20030624 Netscape/7.1 (ax)"})
+        print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  f" - API Response: {response.status_code}")
 
-                    increment()
+        increment()
 
-                    json_data = json.loads(str(response.text))
+        json_data = json.loads(str(response.text))
 
-                    gameinfo = json_data[f'{appid}']['data']
+        gameinfo = json_data[f'{appid}']['data']
+        thumbnail_url = gameinfo['header_image']
+        
+        embed = discord.Embed(title=f"Time Achievement!", description=f"<@!{str(user[0])}> has passed {str(int(int(threshold)/60))} hours in {gameinfo['name']}", color=0x00ff00)
 
-                    cursor.execute(f"SELECT _key FROM config WHERE name = 'achievement_channel'")
-                    channel_id = cursor.fetchone()
-                 
-                    embed = discord.Embed(title=f"Time Achievement!", description=f"<@!{str(user[0])}> has passed {str(int(int(threshold)/60))} hours in {gameinfo['name']}", color=0x00ff00)
-                    # set the author
-                    # get discord users avatar
-                    userValue = await bot.fetch_user(int(user[0]))
-                    embed.set_author(name=f"{userValue.name}", icon_url=f"{userValue.avatar_url}")
-                    embed.set_thumbnail(url=gameinfo['header_image'])
-                    await bot.get_channel(int(channel_id[0])).send(embed=embed)
+        userValue = await bot.fetch_user(int(user[0]))
+        embed.set_author(name=f"{userValue.name}", icon_url=f"{userValue.avatar_url}")
+        embed.set_thumbnail(url=thumbnail_url)
+        await bot.get_channel(int(channel_id)).send(embed=embed)
             
 def new_user(steam_id):
     print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  " - Sending API request")
@@ -415,7 +434,7 @@ async def onError(error,user_id):
     time_to_int = round(unix_time,0)
 
 
-    print(f"\n\n[{time_to_int}] - Guild ID: " + str(user_id))
+    print(f"\n\n[{time_to_int}] - User ID: " + str(user_id))
     print("Error: " + str(error) + "\n")
     await channel.send("<t:" + str(int(time_to_int)) +":F> for user (DiscordID): " + str(user_id) +":\n" + str(error))
 
