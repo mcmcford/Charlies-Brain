@@ -209,7 +209,7 @@ async def check_hours(game,game_from_db,thresholds,custom_thresholds,user):
 
             print(f"checking custom threshold: {str(threshold)}")
 
-            if game['appid'] == threshold[1]:
+            if str(game['appid']) == str(threshold[1]):
 
                 print("Found custom threshold for " + str(game['appid']))
 
@@ -220,7 +220,7 @@ async def check_hours(game,game_from_db,thresholds,custom_thresholds,user):
 
                     if int(game['playtime_forever']) % int(threshold[3]) == 0:
                         print("going to send notification")
-                        await send_notification(game,threshold,user,channel_id)
+                        await send_notification(game,game['playtime_forever'],user,channel_id)
                         skip_general_thresholds = True
                 
         # check if the user has passed one of the hours thresholds
