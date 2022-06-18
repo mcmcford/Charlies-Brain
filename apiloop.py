@@ -216,9 +216,10 @@ async def check_hours(game,game_from_db,thresholds,custom_thresholds,user):
                 if threshold[2].lower() == "modulo":
 
                     print("Threshold is modulo:")
-                    print(int(game['playtime_forever']) % int(threshold[3]))
+                    playtime_mod = int(game['playtime_forever']) % int(threshold[3])
+                    print(playtime_mod)
 
-                    if int(game['playtime_forever']) % int(threshold[3]) == 0:
+                    if playtime_mod >= 0 and playtime_mod <= 15:
                         print("going to send notification")
                         await send_notification(game,game['playtime_forever'],user,channel_id)
                         skip_general_thresholds = True
