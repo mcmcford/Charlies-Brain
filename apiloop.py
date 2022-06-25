@@ -162,6 +162,9 @@ async def check_user(user, thresholds):
                     traceback.print_exc()
 
     except:
+        
+        # print traceback
+        traceback.print_exc()
 
         # get the column failed_attempts from the database where the steam_id is the same as the current user
         cursor.execute(f"SELECT failed_attempts FROM users WHERE steam_id = '{user[1]}'")
@@ -323,9 +326,9 @@ async def check_steams_users_games(games,steam_id):
 
                 # build and embed
                 appid = game['appid']
-                print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  " - Sending API request")
+                #print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  " - Sending API request for game " + str(appid))
                 response = requests.get(f"https://store.steampowered.com/api/appdetails?appids={game['appid']}&format=json", headers={"User-Agent": "Mozilla/5.0 (Platform; Security; OS-or-CPU; Localization; rv:1.4) Gecko/20030624 Netscape/7.1 (ax)"})
-                print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  f" - API Response: {response.status_code}")
+                #print((datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") +  f" - API Response: {response.status_code}")
 
                 increment()
 
@@ -335,10 +338,7 @@ async def check_steams_users_games(games,steam_id):
 
                 game_names.append(gameinfo['name'])
                 game_thumbs.append(gameinfo['header_image'])
-
-
-                
-                
+ 
             print(f"user {steam_id} has just got the game {game['appid']}")
     
     if sendmessage_bool == True:
@@ -422,13 +422,12 @@ def merge_images(list):
                 result.paste(img1, (0, height))
                 result.paste(img2, (result_width, height))
                 break
-
     else:
         result = Image.new('RGB', (result_width, result_height))
         for i in range(len(list)):
             img = Image.open(f'image_name{i}.jpeg')
             result.paste(img, (0, i * img.size[1]))
-
+    
     # delete all the images
     for i in range(len(list)):
         os.remove(f'image_name{i}.jpeg')
