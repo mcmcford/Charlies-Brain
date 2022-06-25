@@ -178,11 +178,15 @@ async def check_user(user, thresholds):
             # update the number of failed attempts to 0
             cursor.execute(f"UPDATE users SET failed_attempts = 0 WHERE steam_id = '{user[1]}'")
             db.commit()
+
+            await onError("User Disabled",str(user[0]))
         else:
             # increment the failed_attempts
             cursor.execute(f"UPDATE users SET failed_attempts = {int(failed_attempts[0])+1} WHERE steam_id = '{user[1]}'")
             db.commit()
             print("failed attempts incremented for user " + str(user[1]))
+
+            await onError(f"User failed attempts incremented (now: {int(failed_attempts[0])+1})",str(user[0]))
               
 async def check_hours(game,game_from_db,thresholds,custom_thresholds,user):
 
