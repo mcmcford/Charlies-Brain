@@ -190,6 +190,8 @@ async def check_user(user, thresholds):
             print("failed attempts incremented for user " + str(user[1]))
 
             await onError(f"User failed attempts incremented (now: {int(failed_attempts[0])+1})",str(user[0]))
+        
+        print(json_data)
               
 async def check_hours(game,game_from_db,thresholds,custom_thresholds,user):
 
@@ -417,6 +419,7 @@ def merge_images(list):
                 result.paste(img2, (result_width, height))
                 height += img1.size[1]
             else:
+                # if an odd number then add the game image alongside the image 'default.jpeg' to fill the otherwise blank space
                 img1 = Image.open(f'image_name{i}.jpeg')
                 img2 = Image.open('default.jpeg')
                 result.paste(img1, (0, height))
